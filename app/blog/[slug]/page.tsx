@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CustomMDX } from "app/components/mdx";
 import { formatDate, getBlogPosts, readMDXFile } from "app/lib/posts";
 import { metaData } from "app/config";
 import { MDXRemote } from "next-mdx-remote/rsc";
+
+interface Params {
+  params: {
+    slug: string;
+  };
+}
 
 export async function generateStaticParams() {
   const posts = getBlogPosts();
@@ -12,54 +17,49 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({
-  params,
-}): Promise<Metadata | undefined> {
-  const { slug } = await params;
-  let post = getBlogPosts().find((post) => post.slug === slug);
-  if (!post) {
-    return;
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  try {
+    const post = getBlogPosts().find((post) => post.slug === params.slug);
+    
+    if (!post) {
+      return {
+        title: 'Not Found',
+        description: 'The page you are looking for does not exist.',
+      };
+    }
+
+    const { title, publishedAt: publishedTime, summary: description, image } = post.metadata;
+    const ogImage = image
+      ? image
+      : `${metaData.baseUrl}/og?title=${encodeURIComponent(title)}`;
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: "article",
+        publishedTime,
+        url: `${metaData.baseUrl}/blog/${post.slug}`,
+        images: [{ url: ogImage }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [ogImage],
+      },
+    };
+  } catch (error) {
+    return {
+      title: 'Error',
+      description: 'There was an error generating the blog post metadata.',
+    };
   }
-
-  let {
-    title,
-    publishedAt: publishedTime,
-    summary: description,
-    image,
-  } = post.metadata;
-  let ogImage = image
-    ? image
-    : `${metaData.baseUrl}/og?title=${encodeURIComponent(title)}`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: "article",
-      publishedTime,
-      url: `${metaData.baseUrl}/blog/${post.slug}`,
-      images: [
-        {
-          url: ogImage,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [ogImage],
-    },
-  };
 }
 
-export default async function BlogPost({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function BlogPost({ params }: Params) {
   try {
     const { content, metadata } = readMDXFile(params.slug);
     
