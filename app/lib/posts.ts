@@ -5,41 +5,60 @@ type Metadata = {
   title: string;
   publishedAt: string;
   summary: string;
-  tags: string;
+  tags?: string;
   image?: string;
 };
 
 function parseFrontmatter(fileContent: string) {
   let frontmatterRegex = /---\s*([\s\S]*?)\s*---/;
   let match = frontmatterRegex.exec(fileContent);
-  let frontMatterBlock = match![1];
+  
+  if (!match) {
+    throw new Error('No frontmatter found');
+  }
+
+  let frontMatterBlock = match[1];
   let content = fileContent.replace(frontmatterRegex, "").trim();
-  let frontMatterLines = frontMatterBlock.trim().split("\n");
   let metadata: Partial<Metadata> = {};
 
-  frontMatterLines.forEach((line) => {
-    let [key, ...valueArr] = line.split(": ");
-    let value = valueArr.join(": ").trim();
-    value = value.replace(/^['"](.*)['"]$/, "$1"); 
-    metadata[key.trim() as keyof Metadata] = value;
-  });
+  try {
+    let frontMatterLines = frontMatterBlock.trim().split("\n");
+    frontMatterLines.forEach((line) => {
+      let [key, ...valueArr] = line.split(": ");
+      let value = valueArr.join(": ").trim();
+      value = value.replace(/^['"](.*)['"]$/, "$1"); 
+      metadata[key.trim() as keyof Metadata] = value;
+    });
 
-  return { metadata: metadata as Metadata, content };
+    if (!metadata.title || !metadata.publishedAt || !metadata.summary) {
+      throw new Error('Missing required frontmatter fields');
+    }
+
+    return { metadata: metadata as Metadata, content };
+  } catch (error) {
+    throw new Error(`Failed to parse frontmatter: ${error.message}`);
+  }
 }
 
 function getMDXFiles(dir: string) {
   return fs.readdirSync(dir).filter((file) => path.extname(file) === ".mdx");
 }
 
-function readMDXFile(filePath: string) {
-  let rawContent = fs.readFileSync(filePath, "utf-8");
-  return parseFrontmatter(rawContent);
+export function readMDXFile(slug: string) {
+  const fullPath = path.join(process.cwd(), 'content/blog', `${slug}.mdx`);
+  let rawContent = fs.readFileSync(fullPath, "utf-8");
+  const { metadata, content } = parseFrontmatter(rawContent);
+  return { 
+    metadata, 
+    content,
+    title: metadata.title, // Added for compatibility
+  };
 }
 
 function getMDXData(dir: string) {
   let mdxFiles = getMDXFiles(dir);
   return mdxFiles.map((file) => {
-    let { metadata, content } = readMDXFile(path.join(dir, file));
+    let { metadata, content } = readMDXFile(path.basename(file, path.extname(file)));
     let slug = path.basename(file, path.extname(file));
 
     return {
@@ -51,7 +70,7 @@ function getMDXData(dir: string) {
 }
 
 export function getBlogPosts() {
-  return getMDXData(path.join(process.cwd(), "content"));
+  return getMDXData(path.join(process.cwd(), "content/blog"));
 }
 
 export function formatDate(date: string, includeRelative = false) {

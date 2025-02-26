@@ -4,7 +4,7 @@ import { socialLinks } from "./config";
 export default function Page() {
   return (
     <section>
-      <a href={socialLinks.twitter} target="_blank">
+      <a href={socialLinks.linkedin} target="_blank">
         <Image
           src="/profile.png"
           alt="Profile photo"
@@ -16,47 +16,57 @@ export default function Page() {
         />
       </a>
       <h1 className="mb-8 text-2xl font-medium tracking-tight">
-        Portfolio template!
+        Hey there! 👋
       </h1>
       <div className="prose prose-neutral dark:prose-invert">
         <p>
-          A clean, fast, and lightweight portfolio template built with Next.js,
-          Vercel, and Tailwind CSS.
+          My name is Dmitrii (Dima for short), I am a Machine Learning Engineer with a passion
+          for NLP and bioinformatics.
         </p>
         <p>
-          Nextfolio has everything you need for a portfolio: MDX blog, SEO, RSS,
-          Atom & JSON feeds, analytics, Tweet & YouTube embeds, KaTeX and {""}
+          I have an extensive background in software engineering and data science, where I worked on
+          a variety of projects - from RAG & Agents within finances and EdTech to NLP pipelines
+          for HR and investor relations, from analytics to putting ML models into production. 
+          Have a look at my {" "} 
           <a
-            target="_blank"
-            href="https://github.com/1msirius/Nextfolio?tab=readme-ov-file#features"
+            href="/cv"
           >
-            more
-          </a>
-          .
+          CV
+          </a>{" "}
+         for more details.
         </p>
         <p>
-          Nextfolio is{" "}
+          Outside of my professional work, I am a big fan of hackathons and open-source projects.
+          Check out my {" "}
           <a href={socialLinks.github} target="_blank">
-            open-source
+            GitHub
           </a>{" "}
-          and fully customizable, making it easy to add more features.
-        </p>
-        <p>
+          and {" "}
           <a
-            href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F1msirius%2FNextfolio"
-            target="_blank"
+            href="/projects"
           >
-            Deploy
-          </a>{" "}
-          your Nextfolio site with Vercel in minutes and follow the set up
-          instructions in the{" "}
-          <a href="/blog/getting-started">Getting Started</a> post.
+          Projects
+          </
+          a>{" "}
+          
+          to see some of my contributions.
         </p>
         <p>
-          Built and maintained by{" "}
-          <a href="https://imsirius.xyz/" target="_blank">
-            Sirius
-          </a>
+          In my free time, I enjoy learning new languages and ultra-distance cycling.
+        </p>
+        <p>
+          Thank you for visiting my website! Feel free to reach out to me via{" "}
+          <a href={socialLinks.linkedin} target="_blank">
+            LinkedIn
+          </a>{" "}
+          or{" "}
+          <a href={socialLinks.email} target="_blank">
+            email
+          </a>{" "}
+          if you have any questions or just want to chat
+          about ML, software engineering, or anything else
+          that comes to mind
+          😊
           .
         </p>
       </div>

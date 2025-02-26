@@ -1,16 +1,16 @@
 export const metaData = {
-  baseUrl: "https://nextfolio-template.vercel.app/",
-  title: "Nextfolio",
-  name: "Sirius",
+  baseUrl: "https://shiriaev.vercel.app/",
+  title: "Dmitrii Shiriaev | ML & NLP",
+  name: "Dmitrii Shiriaev",
   ogImage: "/opengraph-image.png",
   description:
-    "A clean, fast, and lightweight portfolio template built with Next.js, Vercel, and Tailwind CSS for optimal performance.",
+    "Machine Learning Engineer with a passion for NLP and bioinformatics."
 };
 
 export const socialLinks = {
-  twitter: "https://x.com/1tssirius",
-  github: "https://github.com/1msirius/Nextfolio",
-  instagram: "https://www.instagram.com/",
-  linkedin: "https://www.linkedin.com/",
-  email: "mailto:example@gmail.com",
+  // twitter: "https://x.com/1tssirius",
+  github: "https://github.com/dm-shr",
+  // instagram: "https://www.instagram.com/",
+  linkedin: "https://www.linkedin.com/in/dshiriaev/",
+  email: "mailto:dmitrii.shiriaev@outlook.com",
 };

@@ -7,15 +7,15 @@ export interface Project {
 
 export const projects: Project[] = [
   {
-    title: "Mithril AI",
+    title: "Kapital",
     year: 2024,
-    description: "Open science AI resarch lab",
-    url: "https://github.com/mithrilai",
+    description: "Smart AI-powered interface to chat over the financial reportings",
+    url: "https:/kapital-assistant.vercel.app/",
   },
   {
-    title: "OpenDeepLearning",
-    year: 2023,
-    description: "Open source AI education resources",
-    url: "https://opendeeplearning.xyz/",
+    title: "Tech Salary Prediction",
+    year: 2025,
+    description: "ML service to predict the salary of tech professionals",
+    url: "https://tech-salary-prediction.vercel.app/",
   },
 ];
