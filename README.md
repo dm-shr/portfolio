@@ -1,4 +1,4 @@
-# Portflio
+# Portfolio
 
 My portfolio page repo, [visit it here.](https://shiriaev.vercel.app/)
 
