@@ -10,7 +10,7 @@ export const projects: Project[] = [
     title: "Kapital",
     year: 2024,
     description: "Smart AI-powered interface to chat over the financial reportings",
-    url: "https:/kapital-assistant.vercel.app/",
+    url: "https://kapital-assistant.vercel.app/",
   },
   {
     title: "Tech Salary Prediction",
