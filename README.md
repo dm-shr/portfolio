@@ -1,9 +1,9 @@
-# Portfolio
+# Hello 👋
 
-My portfolio page repo, [visit it here.](https://shiriaev.vercel.app/)
+This is my portfolio page repo, would be happy to [see you there.](https://shiriaev.vercel.app/)
 
-Template taken from [nextfolio-template.vercel.app.](https://nextfolio-template.vercel.app/)
+This beautiful template was taken from [nextfolio template](https://nextfolio-template.vercel.app/), big thanks to [Sirius](https://www.imsirius.xyz/) for it.
 
-## Licence
+## License
 
 Released under the MIT License.
