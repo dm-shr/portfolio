@@ -1,0 +1,184 @@
+---
+title: "Tech Sector Salary Prediction Service"
+publishedAt: "2025-03-02"
+summary: "Building a salary prediction model for the tech sector and deploying it as a full-stack web app."
+---
+
+---
+
+# Table of Contents
+
+*   [Introduction](#introduction)
+*   [Technical Overview](#technical-overview)
+    *   [System Design Overview](#system-design-overview)
+    *   [Data](#data)
+    *   [Metrics](#metrics)
+*   [Baselines](#baselines)
+*   [Experiments](#experiments)
+    *   [Experiment Setup & Validation](#experiment-setup--validation)
+*   [Results](#results)
+*   [Conclusion](#conclusion)
+
+# Introduction
+
+Starting in 2026, the [EU Pay Transparency Directive](https://ravio.com/blog/everything-you-need-to-know-about-the-eu-pay-transparency-directive) will, among other things, make it compulsory for companies to inform job seekers about the salary range for the advertised positions, aiming at reducing the pay gap. What would this lead to? Many job openings will contain salary information, which will force companies to adjust compensations to stay within competitive ranges. This means they will need a more robust way to assign salaries based on job information and market data.
+
+With this in mind, we transformed this idea into a prediction model which, after training on labeled job postings within the tech sector, would be able to suggest an accurate salary based on the job description and related metadata. After scraping the labeled data, cleaning it, building features, and experimenting with different architectures, we achieved state-of-the-art results on our dataset by using a blended model of gradient boosting and a Transformer encoder with an added cross-attention layer.
+
+<Image
+  src="/blog/tech-salary-prediction/tech-salary-prediction-solution.jpg" 
+  alt="An overview of our solution architecture."
+  width={640}
+  height={500}
+/>
+
+<Caption>
+  An overview of our solution architecture. On inference, user input with the job data is transformed into features, passed through the two models, and the final weighted average prediction is returned.
+</Caption>
+
+This project, which secured us first place 🏆 at the [ODS NLP Course](https://ods.ai/tracks/nlp-course-autumn-2024/leaderboard/leaderboard) final projects section, was so much fun that I decided to move it from Jupyter notebooks with training and evaluation code into a ready-to-use prediction service. The demo is live, [try it here!](https://tech-salary-prediction.vercel.app/)
+
+What have I built? A full-stack app where pipelines are automated and tracked, orchestrated to allow regular re-training with fresh data, and CI/CD workflows set for seamless integration of new code features into production.
+
+All the source code for the app, notebooks with the experiments, and the final report are available at my [GitHub repo](https://github.com/dm-shr/tech-salary-prediction).
+
+# Technical Overview
+
+First, I will provide a brief overview of the system design and then focus on the model architecture.
+
+## System Design Overview
+
+![System design overview](/blog/tech-salary-prediction/pipeline-gif.gif)
+
+<Caption>
+    A system design overview.
+</Caption>
+
+Every week, on an AWS EC2 instance, the Airflow orchestrator triggers these tasks one by one:
+
+1.  New data (target - starting salary and features - job opening info) is scraped via custom Python scripts.
+2.  The data gets merged with a historical pool of data, cleaned of duplicates, old entries, and non-relevant positions. Missing values are imputed, and if not possible, the entries are skipped.
+3.  Merged and cleaned data is then versioned via DVC and sent to AWS S3 for storage. The weekly data commits at DVC are connected to weekly created Git *tags*, so it is easy to see in the future which data version was present for a particular week. To be fair, that was the most difficult step, to make Airflow, DVC, and Git work in concert, but in the end, it was worth it!
+4.  The Git tag, containing metadata about the new data version, is pushed to the remote repo, linking its state with the data.
+5.  As salaries also *depend* on time points, I have incorporated a target drift test to see whether the new portion of job openings is significantly different in salary than the historical records. If there is a drift above the threshold, the system would notify the engineer that the time range of the data needs to be fixed.
+6.  Features get extracted for both the gradient boosting model and the transformer encoder (more on this and training later).
+7.  The models are trained and validated on random folds, experiments (metrics and learning curves) are logged on an MLflow server, making it very handy to review weekly training pipeline quality.
+8.  Validation scores (R², RMSE, MAE as I use regression here) are compared to their reference values (quality test). If the quality is above a certain threshold, models are trained on full data and sent to S3. This check also triggers an inference container to be re-built.
+9.  Once re-built, the inference container with the FastAPI server downloads fresh models and is ready to fetch new user requests.
+10. On inference, user input with the job data from the frontend is sent to the backend, goes through the feature extractor, a prediction is obtained, and sent back to the user.
+
+As new code features come to the PR, a set of linters and unit tests is run for the backend and the frontend. Once this is completed and merged, the GitHub Actions workflow triggers the EC2 instance to pull new code and re-build the pipeline containers with it.
+
+I set up the frontend with Next.js and TypeScript using [Vercel](https://vercel.com/home) for deployment. Honestly, I like their service a lot - it's so easy and straightforward to make your web interface live!
+
+Now to the heart and soul of the prediction service - the model and, more importantly, the data.
+
+## Data
+
+Our dataset consists of around 33,000 job postings in IT scraped from two large Russian job platforms, HeadHunter ([hh.ru](http://hh.ru/)) and GetMatch, during December 2024. The data covers a wide range of IT and tech positions and includes details like job titles, locations, company information, required skills, and job descriptions.
+
+We performed some Exploratory Data Analysis (EDA) to get a feel for the data. For example, we found that most job postings were concentrated in the capital areas and that the most frequently sought-after skills included SQL, Linux, and Python. The most popular job title was "System Administrator". This initial EDA helped us understand the distribution of job opportunities and the key skills in demand.
+
+Unfortunately, since the data is non-English and does not reflect Swedish job market specifics, I had to translate the incoming job descriptions to Russian during inference, which was not ideal.
+
+The target variable we're trying to predict is the lower bound of the salary range (`salary_from`), scaled and log-transformed to achieve a more normal distribution.
+
+## Metrics
+
+To evaluate our models, we primarily used two metrics:
+
+-   **R-squared (R²)**: This measures the proportion of variance in the target variable that can be explained by the model. A higher R² indicates a better fit, while a value of zero is a "baseline" of predicting by average:
+
+<div style={{ display: 'flex', justifyContent: 'center' }}>
+$
+R^2 = 1 - \frac{SS_{res}}{SS_{tot}}
+$
+</div>
+
+where $SS_{res}$ is the sum of squared residuals and $SS_{tot}$ is the total sum of squares.
+
+-   **Mean Absolute Error (MAE)**: This calculates the average absolute difference between the predicted and actual salary, giving us a sense of the typical prediction error in our original salary scale:
+
+<div style={{ display: 'flex', justifyContent: 'center' }}>
+$
+MAE = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|
+$
+</div>
+
+where $y_i$ is the actual salary and $\hat{y}_i$ is the predicted salary.
+
+# Baselines
+
+We established a few baselines to benchmark our performance:
+
+-   **CatBoost**: CatBoost is a decision tree-based gradient boosting framework perfect for data heavy on categorical features. We added custom text preprocessing pipelines (tokenization, unigram/bigram dictionaries with set size) and hyperparameter tuning. The model used features like job title, location, company, source (HeadHunter/GetMatch), experience requirements, job description size, and a combined description with skills. MSE was used as a loss.
+-   **Bi-GRU-CNN**: RNN is good for capturing sequential patterns and local features. The hybrid architecture combines bidirectional GRU with CNN. The features used were Job description (with numbers removed for better generalization) and a structured template combining job title, company name, location, required skills, and vacancy source. Here, we used L1 loss to try mitigating the impact of the postings with salary outliers.
+-   **Transformer cross-encoder**: We used a BERT-based `sergeyzh/rubert-tiny-turbo` [(HF page)](https://huggingface.co/sergeyzh/rubert-tiny-turbo) which is a decent baseline due to its performance on the [ruMTEB benchmark](https://huggingface.co/spaces/mteb/leaderboard). We used two features: i) job description and ii) concatenated title, company, location, skills, and source. A single transformer head processed two features sequentially, and the respective `[CLS]` token embeddings are concatenated and passed through the MLP regression head. MSE was used as a loss.
+
+These baselines provided a solid foundation for comparison and helped us understand the benefits of the more complex architecture we eventually developed.
+
+# Experiments
+
+To improve upon our baselines, we ran a series of experiments, focusing on a few key areas:
+
+1.  **Two textual features**: We experimented with an additional cross-attention layer on top of the transformer outputs (so that queries for the attention block are feature #1 embeddings and keys/values are feature #2 representations). This, as we hoped, would allow better information transfer between the two textual features compared to simple concatenation.
+2.  **Skewed target distribution**: We used Huber loss to lessen the impact of salary outliers, as some job postings had unusually high starting salaries compared to the median.
+3.  **Heterogeneous nature of the features**: Since data has numerical, categorical, and textual features, we combined gradient boosting-based models with transformer-based architectures.
+4.  **Specific knowledge domain**: Since properties of the texts from the job postings differ strongly from the general language corpus, we tried to pre-tune the transformer with the TSDAE (Transformer-based Sequential Denoising Auto-Encoder for Unsupervised Sentence Embeddings) technique with the subsequent regression, as well as masked language modeling (MLM).
+
+## **Experiment Setup & Validation**
+
+The dataset was split into 80% training and 20% validation sets with a fixed random seed. Models were trained with the same random seed. Experiments were repeated for three random seeds, and metrics were averaged with 95% confidence intervals. Something like cross-validation would definitely work better here, but, as our GPU resources were scarce, we chose this more "simple" setup.
+
+# Results
+
+---
+
+<div style={{ display: 'flex', justifyContent: 'center' }}>
+<Table
+  data={{
+    headers: ["Experiment", "R² score", "MAE"],
+    rows: [
+      ["", "", ""],
+      [<strong>Baselines</strong>, "", ""],
+      ["By average", "0.000 ± 0.000", "0.513 ± 0.002"],
+      ["Bi-GRU-CNN", "0.652 ± 0.012", "0.288 ± 0.007"],
+      ["CatBoost", "0.734 ± 0.005", "0.248 ± 0.004"],
+      ["shared rubert-tiny-turbo (29M)", "0.645 ± 0.027", "0.289 ± 0.012"],
+      ["", "", ""],
+      [<strong>Modifications</strong>, "", ""],
+      ["bi-encoder rubert-tiny-turbo", "0.643 ± 0.024", "0.291 ± 0.013"],
+      ["+ Huber loss + TSDAE", "0.657 ± 0.056", "0.285 ± 0.024"],
+      ["", "", ""],
+      ["shared rubert-tiny-turbo + Huber loss", "0.655 ± 0.035", "0.286 ± 0.016"],
+      ["+ extra [MASK] pooling", "0.599 ± 0.034", "0.313 ± 0.015"],
+      [<em>+ cross-attention</em>, <em>0.671 ± 0.027</em>, <em>0.279 ± 0.014</em>],
+      ["", "", ""],
+      ["multilingual-e5-small (118M) + Huber loss", "0.723 ± 0.024", "0.254 ± 0.013"],
+      [<em>+ cross-attention</em>, <em>0.729 ± 0.017</em>, <em>0.251 ± 0.009</em>],
+      [<strong>+ CatBoost</strong>, <strong>0.770 ± 0.001</strong>, <strong>0.229 ± 0.003</strong>],
+      ["+ cross-attention + CatBoost", "0.769 ± 0.014", "0.229 ± 0.01"]
+    ],
+  }}
+/>
+</div>
+
+
+<Caption>
+    Performance of the models tested in the study. Metrics are reported as a mean value ± 95% confidence intervals across three random seeds. Overall state-of-the-art results are placed in **bold**, while the best results for a solo transformer model are in *italics*.
+</Caption>
+---
+
+Our best results came from blending a `multilingual-e5-small` Transformer model (fine-tuned with Huber loss) with a CatBoost model. This hybrid approach achieved an R² score of 0.770 and an MAE of 0.229, outperforming all our baseline models.
+
+The cross-attention mechanism, which helps the model better integrate information from the job description and other job-related details, proved particularly beneficial for the solo transformer model for both the 29M small BERT and the bigger 118M `multilingual-e5-small`.
+
+Surprisingly, TSDAE pre-training didn't improve results, possibly because our job descriptions are quite long, and the technique is designed for shorter sequences. Adding an extra `[MASK]` pooling lowered the results, probably because vanilla BERT models are not suitable for regression via `[MASK]` tokens.
+
+# Conclusion
+
+We've developed a state-of-the-art salary prediction model by combining the strengths of Transformer and CatBoost architectures, which I then turned into a full-stack web app. It wasn't easy, but seeing it live and automated was worth the effort 🙂
+
+Our experiments highlighted the importance of handling feature heterogeneity, choosing an appropriate loss function, and leveraging techniques like cross-attention to improve information flow between the features.
+
+As for the modeling part, future research could focus on refining domain-specific pre-training strategies for transformers, improving numerical representation within transformers, and applying this hybrid approach to broader datasets or other industries.
