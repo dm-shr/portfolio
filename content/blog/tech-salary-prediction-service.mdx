@@ -75,11 +75,11 @@ Now to the heart and soul of the prediction service - the model and, more import
 
 ## Data
 
-Our dataset consists of around 33,000 job postings in IT scraped from two large Russian job platforms, HeadHunter ([hh.ru](http://hh.ru/)) and GetMatch, during December 2024. The data covers a wide range of IT and tech positions and includes details like job titles, locations, company information, required skills, and job descriptions.
+Our dataset consists of around 33,000 job postings in IT scraped from two large Russian job platforms, HeadHunter and GetMatch, during December 2024. The data covers a wide range of IT and tech positions and includes details like job titles, locations, company information, required skills, and job descriptions.
 
-We performed some Exploratory Data Analysis (EDA) to get a feel for the data. For example, we found that most job postings were concentrated in the capital areas and that the most frequently sought-after skills included SQL, Linux, and Python. The most popular job title was "System Administrator". This initial EDA helped us understand the distribution of job opportunities and the key skills in demand.
+We performed some Exploratory Data Analysis (EDA) to get a feel for the data. For example, we found that most job postings were concentrated in the capital area and that the most frequently sought-after skills included SQL, Linux, and Python. The most popular job title was "System Administrator". This initial EDA helped us understand the distribution of job opportunities and the key skills in demand.
 
-Unfortunately, since the data is non-English and does not reflect Swedish job market specifics, I had to translate the incoming job descriptions to Russian during inference, which was not ideal.
+Unfortunately, since the data is *non-English* and does not reflect Swedish job market specifics, I had to translate the incoming job descriptions to Russian during inference, which leads to some loss in quality.
 
 The target variable we're trying to predict is the lower bound of the salary range (`salary_from`), scaled and log-transformed to achieve a more normal distribution.
 
