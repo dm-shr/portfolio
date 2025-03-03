@@ -1,0 +1,197 @@
+---
+title: "Kapital Assistant Project"
+publishedAt: "2025-02-28"
+summary: "An AI tool that allows a person to chat about the financial data of a company."
+---
+
+---
+
+# Table of Contents
+
+*   [Introduction](#introduction)
+*   [How did we manage to win the hackathon?](#how-did-we-manage-to-win-the-hackathon)
+*   [Technical Overview](#technical-overview)
+  *   [System Design Overview](#system-design-overview)
+  *   [Data Pipeline](#data-pipeline)
+    *   [Knowledge Graph Creation](#knowledge-graph-creation)
+    *   [Tabular Data Ingestion](#tabular-data-ingestion)
+    *   [Text Data Ingestion](#text-data-ingestion)
+  *   [Quality Benchmark](#quality-benchmark)
+  *   [What could be improved?](#what-could-be-improved)
+*   [Authors](#authors)
+
+# Introduction
+
+Imagine you are a financial analyst making a report on how a company is doing at the moment. You have to go through a lot of data, and you have to make sure that you are not missing any important details. This is an accurate, yet quite time-consuming process. Because of that, many companies are looking for ways to automate this workflow or at least make it easier for their employees. This is where Kapital Assistant comes in.
+
+Initially developed for the [Hack.Genesis 2024 hackathon](https://hackgenesis.com/) where it won us first place, Kapital Assistant is an AI tool that allows a person to chat about the financial data of a company. By using LLM agents and knowledge graphs, the assistant understands the user intent (*i.e.*, company in question, time period, financial metric) and retrieves the relevant information from the financial statements.
+
+After the hackathon, I decided to further develop the app and make it available to the public. [You can find the project here](https://kapital-assistant.vercel.app/). If you are interested in the code implementation, you can find it in [the GitHub repository](https://github.com/dm-shr/kapital-assistant).
+
+In this post, I will briefly describe the design of the assistant and share some insights on the features that helped us get the first place.
+
+# How did we manage to win the hackathon?
+
+On a warm Friday evening of summer 2024, we, a team of four, had been given 72 hours to build a financial assistant that would help a private investor chat about financial data. As a benchmark, we had a dozen PDF reports of different quality (scanned, born-digital) and of different companies, and a set of questions and answers that the assistant should be able to provide.
+
+Of course, our first idea was to use RAG, but would a vanilla approach work here? We had to make sure that the assistant would be able to understand the following:
+
+1.  The company the user is asking about, accounting for name variations and misspellings.
+2.  The time period the user is talking about.
+3.  The type of data requested - table-derived (*e.g.*, revenue) or text-derived (*e.g.*, risk factors).
+
+We guessed that if we solved these three problems, the retriever part would be mostly done - the search would become limited to 1-2 PDF reports, and the LLM synthesizer would manage to get the correct answer. Additionally, we had to make sure the assistant would forward the context information it based its answer on, so that the user could verify the correctness of the answer.
+
+We thought that these four points, once solved, would allow us to win the hackathon. And we were right.
+
+# Technical Overview
+
+## System Design Overview
+
+<Image
+  src="/blog/kapital-assistant/system-overview.gif" 
+  alt="An overview of our solution architecture."
+  width={640}
+  height={500}
+/>
+
+<Caption>
+  An overview of our solution architecture.
+</Caption>
+
+At the core of the assistant, we used LangChain to orchestrate our agentic app and FAISS as a vector database.
+
+1.  When the user asks a question, the first-line LLM will do the following:
+
+    *   Check whether the question is related to financial data; if not, ask the user to try another one.
+    *   Extract the company name, time period, and financial metric from the question.
+    *   Understand the type of data asked - table-derived or text-derived.
+    *   If needed, refine or expand the question into more specific ones.
+
+2.  The extracted company name is then passed to the knowledge graph search pipeline to link the user query to the correct document collection (company-period-data type).
+
+3.  Having the query and the metadata, the assistant calls the retriever tool that essentially runs a hybrid search over the financial documents. From my experience, keyword search often works just fine, performing as a state-of-the-art or close-to-state-of-the-art solution in information retrieval. Still, we added semantic search layer to further enrich the search results:
+
+    *   Dense Vector Similarity Search: query + metadata are embedded into a dense vector, and the most relevant documents (by cosine similarity) are retrieved.
+    *   Keyword Search: BM25 (TF-iDF variation) is used to find the most relevant documents by keyword search.
+
+The search works quite differently for table-derived and text-derived data:
+
+*   For table-derived metrics, we search within the embedded representations of the extracted tables and their metadata.
+*   For text-derived metrics, we search within the extracted text blocks.
+
+4.  Now, like in classical RAG, the assistant is provided with top-k documents, finds the relevant context, and synthesizes the answer. The documents labeled by the LLM as relevant (*e.g.*, a specific page of the report) are also returned to the user for verification.
+
+## Data Pipeline
+
+Here I will share a few tricks we used to ingest our PDF report data most efficiently.
+
+### Knowledge Graph Creation
+
+<Image
+  src="/blog/kapital-assistant/knowledge-graph.jpg"
+  alt="An overview of knowledge graph creation."
+  width={640}
+  height={500}
+/>
+
+<Caption>
+  An overview of knowledge graph creation.
+</Caption>
+
+To automate the process of knowledge graph creation, we used the following pipeline:
+
+1.  The PDF report of the company is sent to LLM for entity extraction.
+2.  The extracted company names present are passed through the company name aggregator ([like this one](https://www.allabolag.se/)), which returns a company ID.
+3.  The company ID is passed through the [Wikidata API](https://www.wikidata.org/wiki/Wikidata:REST_API) to get the full list of company names and their aliases.
+4.  The company ID and the extracted company names are stored in the knowledge graph.
+
+### Tabular Data Ingestion
+
+<Image
+  src="/blog/kapital-assistant/structured-ingestion.jpg"
+  alt="An overview of structured data ingestion."
+  width={640}
+  height={500}
+/>
+
+<Caption>
+  An overview of tabular data ingestion.
+</Caption>
+
+To store the tabular data, we built a pipeline that:
+
+1.  Finds and extracts the tables from the PDF report (we used [Microsoft Table Transformer](https://huggingface.co/microsoft/table-transformer-detection) for this).
+2.  Adds the metadata to the table (*e.g.*, company name, time period, page number).
+3.  OCRs the table and prompts LLM to provide extra details:
+
+    *   Probability score of the table being a financial table.
+    *   Summary of the table.
+    *   Imputed table in markdown format.
+
+4.  The resulting table and metadata are then ingested into the vector database.
+
+### Text Data Ingestion
+
+<Image
+  src="/blog/kapital-assistant/unstructured-ingestion.jpg"
+  alt="An overview of text data ingestion."
+  width={640}
+  height={500}
+/>
+
+<Caption>
+  An overview of text data ingestion.
+</Caption>
+
+In the case of text data, it was a bit more straightforward:
+
+1.  Extract the text from the PDF report.
+2.  Get the metadata (company name, time period, page number).
+3.  Chunk the text into smaller blocks and ingest them into the vector database.
+
+## Quality Benchmark and Future Improvements
+
+To get an idea of how well our assistant performs, we run it on a set of test questions. The metrics used:
+
+*   DocRetriever@K: answer *IN* retrieved top-**K** documents
+*   ParRetriever@K: answer *IN* retrieved top-**K** paragraphs/tables
+*   Reader: answer *IS* correct
+
+<div style={{ display: 'flex', justifyContent: 'center' }}>
+<Table
+  data={{
+    headers: ["", "DocRetriever@3", "ParRetriever@3", "Reader"],
+    rows: [
+      ["Digital PDF", "100", "92", "88"],
+      ["Scanned PDF", "90.9", "63.6", "63.6"],
+    ],
+  }}
+/>
+</div>
+
+<Caption>
+  Kapital Assistant RAG performance.
+</Caption>
+
+The first thing we noticed is that the assistant performs quite well on digital PDFs, but struggles with scanned PDFs. For that, increasing the quality of the OCR would be beneficial.
+
+Also, as we can see, the system gets the right document with a very high precision but struggles with the correct paragraph within it. We believe that this comes from the assistant not being able to understand the user intent fully. For instance, when a user asks:
+
+> "Loan amounts as of December 31, 2024 for ABB"
+
+This query lacks specificity. The assistant needs to know what type of loans the user is interested in (*e.g.*, loans to related companies, short-term loans, or long-term loans).
+
+To address this, the assistant could be improved to:
+
+*   **Ask the user to refine the query:** If the initial query is ambiguous, the assistant should prompt the user for more specific information.
+*   **Implement query expansion:** The assistant could automatically expand the query by adding related terms or synonyms to improve retrieval quality. This could involve using a knowledge base or thesaurus to identify relevant terms.
+
+Improving query quality will directly enhance the retrieval process, leading to more accurate and relevant results.
+
+# Authors
+
+-   [Dmitrii Shiriaev](https://www.linkedin.com/in/dshiriaev/)
+-   [Aleksandr Perevalov](https://www.linkedin.com/in/aleksandr-perevalov/)
+-   [Vladislav Raskoshinskii](https://www.linkedin.com/in/vladislav-raskoshinskii/)
+-   [Ilya Moshonkin](https://www.linkedin.com/in/ilyamoshonkin/)
