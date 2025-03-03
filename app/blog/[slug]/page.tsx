@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getBlogPosts, readMDXFile } from "app/lib/posts";
 import { metaData } from "app/config";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { CustomMDX } from "app/components/mdx"; // Using your custom MDX component
 
-// Remove type annotations and let Next.js infer them
-export default async function Page(props) {
-  const slug = props.params?.slug;
+export default async function Page({ params }) {
+  const slug = params?.slug;
   
   if (!slug) {
     notFound();
@@ -21,7 +20,7 @@ export default async function Page(props) {
           {metadata.title}
         </h1>
         <div className="prose prose-neutral dark:prose-invert">
-          <MDXRemote source={content} />
+          <CustomMDX source={content} />
         </div>
       </section>
     );
@@ -37,9 +36,8 @@ export async function generateStaticParams() {
   }));
 }
 
-// Remove type annotations here too
-export async function generateMetadata(props) {
-  const slug = props.params?.slug;
+export async function generateMetadata({ params }) {
+  const slug = params?.slug;
   
   try {
     const post = getBlogPosts().find((post) => post.slug === slug);
