@@ -41,6 +41,12 @@ export default function Page() {
           <a href={socialLinks.github} target="_blank">
             GitHub
           </a>{" "}
+          , {" "}
+          <a
+            href="/blog"
+          >
+          Blog posts
+          </a>{" "}
           and {" "}
           <a
             href="/projects"
