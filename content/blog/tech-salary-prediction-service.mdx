@@ -23,7 +23,7 @@ summary: "Building a salary prediction model for the tech sector and deploying i
 
 Starting in 2026, the [EU Pay Transparency Directive](https://ravio.com/blog/everything-you-need-to-know-about-the-eu-pay-transparency-directive) will, among other things, make it compulsory for companies to inform job seekers about the salary range for the advertised positions, aiming at reducing the pay gap. What would this lead to? Many job openings will contain salary information, which will force companies to adjust compensations to stay within competitive ranges. This means they will need a more robust way to assign salaries based on job information and market data.
 
-With this in mind, we transformed this idea into a prediction model which, after training on labeled job postings within the tech sector, would be able to suggest an accurate salary based on the job description and related metadata. After scraping the labeled data, cleaning it, building features, and experimenting with different architectures, we achieved state-of-the-art results on our dataset by using a blended model of gradient boosting and a Transformer encoder with an added cross-attention layer.
+With this in mind, we transformed this idea into a prediction model which, after training on labeled job postings within the tech sector, would be able to suggest an accurate salary based on the job description and related metadata. After scraping the labeled data, cleaning it, building features, and experimenting with different architectures, we achieved state-of-the-art results on our dataset by using a blended model of gradient boosting and a Transformer bi-encoder with an added cross-attention layer.
 
 <Image
   src="/blog/tech-salary-prediction/tech-salary-prediction-solution.jpg" 
@@ -118,7 +118,7 @@ We established a few baselines to benchmark our performance:
 
 -   **CatBoost**: CatBoost is a decision tree-based gradient boosting framework perfect for data heavy on categorical features. We added custom text preprocessing pipelines (tokenization, unigram/bigram dictionaries with set size) and hyperparameter tuning. The model used features like job title, location, company, source (HeadHunter/GetMatch), experience requirements, job description size, and a combined description with skills. MSE was used as a loss.
 -   **Bi-GRU-CNN**: RNN is good for capturing sequential patterns and local features. The hybrid architecture combines bidirectional GRU with CNN. The features used were Job description (with numbers removed for better generalization) and a structured template combining job title, company name, location, required skills, and vacancy source. Here, we used L1 loss to try mitigating the impact of the postings with salary outliers.
--   **Transformer cross-encoder**: We used a BERT-based `sergeyzh/rubert-tiny-turbo` [(HF page)](https://huggingface.co/sergeyzh/rubert-tiny-turbo) which is a decent baseline due to its performance on the [ruMTEB benchmark](https://huggingface.co/spaces/mteb/leaderboard). We used two features: i) job description and ii) concatenated title, company, location, skills, and source. A single transformer head processed two features sequentially, and the respective `[CLS]` token embeddings are concatenated and passed through the MLP regression head. MSE was used as a loss.
+-   **Transformer bi-encoder**: We used a BERT-based `sergeyzh/rubert-tiny-turbo` [(HF page)](https://huggingface.co/sergeyzh/rubert-tiny-turbo) which is a decent baseline due to its performance on the [ruMTEB benchmark](https://huggingface.co/spaces/mteb/leaderboard). We used two features: i) job description and ii) concatenated title, company, location, skills, and source. A single transformer head processed two features sequentially, and the respective `[CLS]` token embeddings are concatenated and passed through the MLP regression head. MSE was used as a loss.
 
 These baselines provided a solid foundation for comparison and helped us understand the benefits of the more complex architecture we eventually developed.
 
@@ -149,13 +149,13 @@ The dataset was split into 80% training and 20% validation sets with a fixed ran
       ["By average", "0.000 ± 0.000", "0.513 ± 0.002"],
       ["Bi-GRU-CNN", "0.652 ± 0.012", "0.288 ± 0.007"],
       ["CatBoost", "0.734 ± 0.005", "0.248 ± 0.004"],
-      ["shared rubert-tiny-turbo (29M)", "0.645 ± 0.027", "0.289 ± 0.012"],
+      ["bi-encoder rubert-tiny-turbo (29M)", "0.645 ± 0.027", "0.289 ± 0.012"],
       ["", "", ""],
       [<strong>Modifications</strong>, "", ""],
-      ["bi-encoder rubert-tiny-turbo", "0.643 ± 0.024", "0.291 ± 0.013"],
+      ["separate encoders rubert-tiny-turbo", "0.643 ± 0.024", "0.291 ± 0.013"],
       ["+ Huber loss + TSDAE", "0.657 ± 0.056", "0.285 ± 0.024"],
       ["", "", ""],
-      ["shared rubert-tiny-turbo + Huber loss", "0.655 ± 0.035", "0.286 ± 0.016"],
+      ["bi-encoder rubert-tiny-turbo + Huber loss", "0.655 ± 0.035", "0.286 ± 0.016"],
       ["+ extra [MASK] pooling", "0.599 ± 0.034", "0.313 ± 0.015"],
       [<em>+ cross-attention</em>, <em>0.671 ± 0.027</em>, <em>0.279 ± 0.014</em>],
       ["", "", ""],
