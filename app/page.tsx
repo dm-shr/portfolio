@@ -20,7 +20,7 @@ export default function Page() {
       </h1>
       <div className="prose prose-neutral dark:prose-invert">
         <p>
-          My name is Dmitrii (Dima for short), I am a Machine Learning Engineer with a passion
+          My name is Dmitrii (Dima for short), I am a Data Scientist / Machine Learning Engineer with a passion
           for NLP and bioinformatics.
         </p>
         <p>
