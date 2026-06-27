@@ -20,13 +20,13 @@ export default function Page() {
       </h1>
       <div className="prose prose-neutral dark:prose-invert">
         <p>
-          My name is Dmitrii (Dima for short), I am a Data Scientist / Machine Learning Engineer with a passion
-          for NLP and bioinformatics.
+          My name is Dmitrii (but you can call me Dima for short), and I am a Data Scientist 
+          specializing in marketing measurement and causal inference.
         </p>
         <p>
-          I have an extensive background in software engineering and data science, where I worked on
-          a variety of projects - from RAG & Agents within finances and EdTech to NLP pipelines
-          for HR and investor relations, from analytics to putting ML models into production. 
+          My experience ranges from causal inference and Bayesian modeling to agentic pipelines and NLP, 
+          with end-to-end ownership from analytics to deployment and observability pipelines.
+          Previously built RAG and agentic systems in finance and HR, and spent five years doing computational research at Karolinska Institute.
           Have a look at my {" "} 
           <a
             href="/cv"
