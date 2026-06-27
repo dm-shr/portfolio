@@ -1,6 +1,6 @@
 export const metaData = {
   baseUrl: "https://shiriaev.vercel.app/",
-  title: "Dmitrii Shiriaev | ML & NLP",
+  title: "Dmitrii Shiriaev | Data & ML",
   name: "Dmitrii Shiriaev",
   ogImage: "/opengraph-image.png",
   description:

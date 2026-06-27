@@ -9,13 +9,13 @@ export const projects: Project[] = [
   {
     title: "Kapital Assistant",
     year: 2024,
-    description: "Smart AI-powered interface to chat over the financial reports",
-    url: "https://kapital-assistant.vercel.app/",
+    description: "Agentic interface to chat over the financial reports",
+    url: "https://github.com/dm-shr/kapital-assistant/",
   },
   {
     title: "IT Industry Salary Prediction",
     year: 2025,
     description: "ML service to predict the salary of IT professionals",
-    url: "https://tech-salary-prediction.vercel.app/",
+    url: "https://github.com/dm-shr/tech-salary-prediction/",
   },
 ];
